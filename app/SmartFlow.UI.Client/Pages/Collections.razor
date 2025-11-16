@@ -75,6 +75,12 @@
                                OnClick="ShowEditMetadataForm"
                                Title="Edit Collection Metadata" />
                 
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                               Color="Color.Error" 
+                               Variant="Variant.Filled"
+                               OnClick="ShowDeleteCollectionDialogAsync"
+                               Title="Remove Collection" />
+                
                 <MudButton StartIcon="@Icons.Material.Filled.Upload"
                            Color="Color.Primary"
                            Variant="Variant.Filled"
@@ -204,85 +210,12 @@
 
         @if (_showUploadSection)
         {
-            <!-- Upload Section -->
-            <MudPaper Elevation="2" Class="pa-4 mb-4">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
-                    <MudIcon Icon="@Icons.Material.Filled.CloudUpload" />
-                    <MudText Typo="Typo.h6">Upload Documents to @_selectedCollection</MudText>
-                    <MudSpacer />
-                    <MudIconButton Icon="@Icons.Material.Filled.Close" 
-                                   OnClick="@(() => _showUploadSection = false)"
-                                   Title="Close upload section" />
-                </MudStack>
-                
-                <MudFileUpload T="IReadOnlyList<IBrowserFile>" 
-                               Accept=".pdf,.png,.jpg,.jpeg" 
-                               MaximumFileCount="10" 
-                               FilesChanged="UploadFiles" 
-                               Required="true" 
-                               RequiredError="You must select at least one file to upload.">
-                    <ActivatorContent>
-                        <MudButton HtmlTag="label"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.FileOpen"
-                                   Size="Size.Large">
-                            Select Files
-                        </MudButton>
-                    </ActivatorContent>
-                </MudFileUpload>
-
-                @if (_fileUploads.Any())
-                {
-                    <MudPaper Elevation="0" Class="mt-4 pa-3" Style="border: 1px dashed var(--mud-palette-primary);">
-                        <MudStack Spacing="2">
-                            <MudText Typo="Typo.subtitle2">
-                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-2" />
-                                @(_fileUploads.Count) file(s) selected - @(_fileUploads.Sum(f => f.Size).ToHumanReadableSize())
-                            </MudText>
-                            @foreach (var file in _fileUploads)
-                            {
-                                var fileSize = file.Size.ToHumanReadableSize();
-                                var fileName = file.Name;
-                                <MudChip T="string"
-                                         Icon="@Icons.Material.Filled.InsertDriveFile" 
-                                         OnClose="@(() => RemoveFile(file))">
-                                    @fileName (@fileSize)
-                                </MudChip>
-                            }
-                        </MudStack>
-                    </MudPaper>
-                }
-
-                <MudText Typo="Typo.body2" Class="mt-3" Color="Color.Default">
-                    Maximum file size: @(MaxIndividualFileSize.ToHumanReadableSize()) | Accepted formats: PDF, PNG, JPG, JPEG
-                </MudText>
-
-                <MudStack Row="true" Spacing="2" Class="mt-4">
-                    @if (_isUploadingDocuments)
-                    {
-                        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                        <MudText>Uploading documents...</MudText>
-                    }
-                    else
-                    {
-                        <MudButton StartIcon="@Icons.Material.Filled.Clear"
-                                   Variant="Variant.Text"
-                                   Color="Color.Default"
-                                   Disabled="@(!_fileUploads.Any())"
-                                   OnClick="@(() => _fileUploads.Clear())">
-                            Clear All
-                        </MudButton>
-                        <MudButton StartIcon="@Icons.Material.Filled.Upload"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Disabled="@(!_fileUploads.Any())"
-                                   OnClick="@(async _ => await SubmitFilesForUploadAsync())">
-                            Upload @(_fileUploads.Count) File@(_fileUploads.Count != 1 ? "s" : "")
-                        </MudButton>
-                    }
-                </MudStack>
-            </MudPaper>
+            <FileUploadSection TargetName="@_selectedCollection"
+                             MaxIndividualFileSize="MaxIndividualFileSize"
+                             SelectedFiles="_fileUploads"
+                             IsUploading="_isUploadingDocuments"
+                             OnClose="@(() => _showUploadSection = false)"
+                             OnUpload="SubmitFilesForUploadAsync" />
         }
 
         @if (!_collections.Any() && !_showCreateCollectionForm && !_isLoadingCollections)

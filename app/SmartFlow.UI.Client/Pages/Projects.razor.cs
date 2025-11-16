@@ -4,20 +4,22 @@ using Shared.Models;
 
 namespace SmartFlow.UI.Client.Pages;
 
-public sealed partial class Collections : IDisposable
+public sealed partial class Projects : IDisposable
 {
     private const long MaxIndividualFileSize = 1_024 * 1_024 * 10;
 
     private MudForm _form = null!;
-    private MudForm _createCollectionForm = null!;
-    private bool _createCollectionFormValid = false;
+    private MudForm _createProjectForm = null!;
+    private bool _createProjectFormValid = false;
 
     private bool _isLoadingDocuments = false;
     private bool _isUploadingDocuments = false;
     private bool _isIndexingDocuments = false;
-    private bool _isLoadingCollections = false;
+    private bool _isLoadingProjects = false;
     private bool _showUploadSection = false; // Hidden by default - user clicks "Upload Document" to show
     private string _filter = "";
+    private string _projectFilter = "";
+    private int _filteredProjectCount = 0;
     private HashSet<string> _processingFiles = new(); // Track files being processed
     private HashSet<string> _deletingFiles = new(); // Track files being deleted
 
@@ -26,92 +28,101 @@ public sealed partial class Collections : IDisposable
 
     [Inject] public required ApiClient Client { get; set; }
     [Inject] public required ISnackbar Snackbar { get; set; }
-    [Inject] public required ILogger<Collections> Logger { get; set; }
+    [Inject] public required ILogger<Projects> Logger { get; set; }
     [Inject] public required IJSRuntime JSRuntime { get; set; }
     [Inject] public required HttpClient HttpClient { get; set; }
     [Inject] public required IDialogService DialogService { get; set; }
 
-    // Collection management
-    private List<CollectionInfo> _collections = new();
-    private string _selectedCollection = "";
-    private CollectionInfo? _selectedCollectionInfo = null;
-    private List<ContainerFileInfo> _collectionFiles = new();
-    private bool _showCreateCollectionForm = false;
-    private string _newCollectionName = "";
-    private string _newCollectionDescription = "";
-    private string _newCollectionType = "";
+    // Project management
+    private List<CollectionInfo> _projects = new();
+    private string _selectedProject = "";
+    private CollectionInfo? _selectedProjectInfo = null;
+    private List<ContainerFileInfo> _projectFiles = new();
+    private bool _showCreateProjectForm = false;
+    private string _newProjectName = "";
+    private string _newProjectDescription = "";
+    private string _newProjectType = "";
 
-    // Edit collection metadata
+    // Edit project metadata
     private bool _showEditMetadataForm = false;
-    private string _editCollectionDescription = "";
-    private string _editCollectionType = "";
+    private string _editProjectDescription = "";
+    private string _editProjectType = "";
 
     protected override async Task OnInitializedAsync()
     {
-        // Load collections
-        await LoadCollectionsAsync();
+        // Load projects
+        await LoadProjectsAsync();
     }
 
-    private async Task LoadCollectionsAsync()
+    protected override void OnAfterRender(bool firstRender)
     {
-        _isLoadingCollections = true;
+        if (!firstRender)
+        {
+            // Reset counter before filter runs
+            _filteredProjectCount = 0;
+        }
+    }
+
+    private async Task LoadProjectsAsync()
+    {
+        _isLoadingProjects = true;
         try
         {
-            _collections = await Client.GetCollectionsAsync();
-            // Auto-select first collection if available
-            if (_collections.Any())
+            _projects = await Client.GetProjectsAsync();
+            // Auto-select first project if available
+            if (_projects.Any())
             {
-                await SelectCollectionAsync(_collections.First().Name);
+                await SelectProjectAsync(_projects.First().Name);
             }
             else
             {
-                _selectedCollection = "";
-                _selectedCollectionInfo = null;
-                _collectionFiles.Clear();
+                _selectedProject = "";
+                _selectedProjectInfo = null;
+                _projectFiles.Clear();
                 _fileUploads.Clear();
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading collections");
-            SnackBarError("Failed to load collections");
+            Logger.LogError(ex, "Error loading projects");
+            SnackBarError("Failed to load projects");
         }
         finally
         {
-            _isLoadingCollections = false;
+            _isLoadingProjects = false;
             StateHasChanged();
         }
     }
 
-    private async Task SelectCollectionAsync(string collectionName)
+    private async Task SelectProjectAsync(string projectName)
     {
-        if (_selectedCollection != collectionName)
+        if (_selectedProject != projectName)
         {
-            _selectedCollection = collectionName;
-            _selectedCollectionInfo = _collections.FirstOrDefault(c => c.Name == collectionName);
-            _fileUploads.Clear(); // Clear any selected files when switching collections
-            _filter = ""; // Clear filter when switching collections
-            _showCreateCollectionForm = false; // Hide create form when selecting a collection
-            _showUploadSection = false; // Hide upload section when switching collections
-            _showEditMetadataForm = false; // Hide edit metadata form when switching collections
-            await LoadCollectionFilesAsync();
+            _selectedProject = projectName;
+            _selectedProjectInfo = _projects.FirstOrDefault(c => c.Name == projectName);
+            _fileUploads.Clear(); // Clear any selected files when switching projects
+            _filter = ""; // Clear filter when switching projects
+            _showCreateProjectForm = false; // Hide create form when selecting a project
+            _showUploadSection = false; // Hide upload section when switching projects
+            _showEditMetadataForm = false; // Hide edit metadata form when switching projects
+            await LoadProjectFilesAsync();
         }
     }
 
-    private async Task LoadCollectionFilesAsync()
+    private async Task LoadProjectFilesAsync()
     {
-        if (string.IsNullOrEmpty(_selectedCollection))
+        if (string.IsNullOrEmpty(_selectedProject))
             return;
 
         _isLoadingDocuments = true;
         try
         {
-            _collectionFiles = await Client.GetCollectionFilesAsync(_selectedCollection);
+            _projectFiles = await Client.GetProjectFilesAsync(_selectedProject);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading collection files for {Collection}", _selectedCollection);
-            SnackBarError($"Failed to load files from collection '{_selectedCollection}'");
+            Logger.LogError(ex, "Error loading project files for {Project}", _selectedProject);
+            SnackBarError($"Failed to load files from project '{_selectedProject}'");
         }
         finally
         {
@@ -120,93 +131,93 @@ public sealed partial class Collections : IDisposable
         }
     }
 
-    private void ShowCreateCollectionForm()
+    private void ShowCreateProjectForm()
     {
-        _newCollectionName = "";
-        _newCollectionDescription = "";
-        _newCollectionType = "";
-        _createCollectionFormValid = false;
-        _showCreateCollectionForm = true;
+        _newProjectName = "";
+        _newProjectDescription = "";
+        _newProjectType = "";
+        _createProjectFormValid = false;
+        _showCreateProjectForm = true;
         _showEditMetadataForm = false;
     }
 
-    private void CancelCreateCollection()
+    private void CancelCreateProject()
     {
-        _showCreateCollectionForm = false;
-        _newCollectionName = "";
-        _newCollectionDescription = "";
-        _newCollectionType = "";
-        _createCollectionFormValid = false;
+        _showCreateProjectForm = false;
+        _newProjectName = "";
+        _newProjectDescription = "";
+        _newProjectType = "";
+        _createProjectFormValid = false;
     }
 
-    private string ValidateCollectionName(string name)
+    private string ValidateProjectName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return "Collection name is required";
+            return "Project name is required";
 
         // Azure Storage container naming rules
         if (name.Length < 3 || name.Length > 63)
-            return "Collection name must be between 3 and 63 characters";
+            return "Project name must be between 3 and 63 characters";
 
         if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"))
-            return "Collection name must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number";
+            return "Project name must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number";
 
         if (name.Contains("--"))
-            return "Collection name cannot contain consecutive hyphens";
+            return "Project name cannot contain consecutive hyphens";
 
-        if (_collections.Any(c => c.Name == name))
-            return "A collection with this name already exists";
+        if (_projects.Any(c => c.Name == name))
+            return "A project with this name already exists";
 
         return null!;
     }
 
-    private async Task CreateCollectionAsync()
+    private async Task CreateProjectAsync()
     {
-        if (string.IsNullOrWhiteSpace(_newCollectionName) || !_createCollectionFormValid)
+        if (string.IsNullOrWhiteSpace(_newProjectName) || !_createProjectFormValid)
         {
-            SnackBarError("Please enter a valid collection name");
+            SnackBarError("Please enter a valid project name");
             return;
         }
 
         try
         {
-            var success = await Client.CreateCollectionAsync(
-                _newCollectionName, 
-                string.IsNullOrWhiteSpace(_newCollectionDescription) ? null : _newCollectionDescription,
-                string.IsNullOrWhiteSpace(_newCollectionType) ? null : _newCollectionType);
+            var success = await Client.CreateProjectAsync(
+                _newProjectName, 
+                string.IsNullOrWhiteSpace(_newProjectDescription) ? null : _newProjectDescription,
+                string.IsNullOrWhiteSpace(_newProjectType) ? null : _newProjectType);
             
             if (success)
             {
-                SnackBarMessage($"Collection '{_newCollectionName}' created successfully");
-                _showCreateCollectionForm = false;
-                var createdCollectionName = _newCollectionName;
-                _newCollectionName = "";
-                _newCollectionDescription = "";
-                _newCollectionType = "";
-                await LoadCollectionsAsync();
-                // Auto-select the newly created collection
-                await SelectCollectionAsync(createdCollectionName);
+                SnackBarMessage($"Project '{_newProjectName}' created successfully");
+                _showCreateProjectForm = false;
+                var createdProjectName = _newProjectName;
+                _newProjectName = "";
+                _newProjectDescription = "";
+                _newProjectType = "";
+                await LoadProjectsAsync();
+                // Auto-select the newly created project
+                await SelectProjectAsync(createdProjectName);
             }
             else
             {
-                SnackBarError($"Failed to create collection '{_newCollectionName}'");
+                SnackBarError($"Failed to create project '{_newProjectName}'");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error creating collection {CollectionName}", _newCollectionName);
-            SnackBarError($"Error creating collection: {ex.Message}");
+            Logger.LogError(ex, "Error creating project {ProjectName}", _newProjectName);
+            SnackBarError($"Error creating project: {ex.Message}");
         }
     }
 
     private void ShowEditMetadataForm()
     {
-        if (_selectedCollectionInfo != null)
+        if (_selectedProjectInfo != null)
         {
-            _editCollectionDescription = _selectedCollectionInfo.Description ?? "";
-            _editCollectionType = _selectedCollectionInfo.Type ?? "";
+            _editProjectDescription = _selectedProjectInfo.Description ?? "";
+            _editProjectType = _selectedProjectInfo.Type ?? "";
             _showEditMetadataForm = true;
-            _showCreateCollectionForm = false;
+            _showCreateProjectForm = false;
             _showUploadSection = false;
         }
     }
@@ -214,120 +225,152 @@ public sealed partial class Collections : IDisposable
     private void CancelEditMetadata()
     {
         _showEditMetadataForm = false;
-        _editCollectionDescription = "";
-        _editCollectionType = "";
+        _editProjectDescription = "";
+        _editProjectType = "";
     }
 
-    private async Task ShowDeleteCollectionDialogAsync()
+    private async Task ShowDeleteProjectDialogAsync()
     {
-        if (string.IsNullOrEmpty(_selectedCollection))
+        if (string.IsNullOrEmpty(_selectedProject))
         {
-            SnackBarError("No collection selected");
+            SnackBarError("No project selected");
             return;
         }
 
         // Show confirmation dialog
         var parameters = new DialogParameters
         {
-            { "ContentText", $"Are you sure you want to remove collection '{_selectedCollection}'? This will only remove the collection metadata tag. The container and all its files will remain intact and can be re-added as a collection later." },
-            { "ButtonText", "Remove Collection" },
+            { "ContentText", $"Are you sure you want to delete project '{_selectedProject}'? This action cannot be undone. All files and metadata in this project will be deleted." },
+            { "ButtonText", "Delete Project" },
             { "Color", Color.Error }
         };
 
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Collection Removal", parameters);
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Project Deletion", parameters);
         var result = await dialog.Result;
 
         if (result.Canceled)
             return;
 
-        await DeleteCollectionAsync();
+        await DeleteProjectAsync();
     }
 
-    private async Task DeleteCollectionAsync()
+    private async Task DeleteProjectAsync()
     {
-        if (string.IsNullOrEmpty(_selectedCollection))
+        if (string.IsNullOrEmpty(_selectedProject))
         {
-            SnackBarError("No collection selected");
+            SnackBarError("No project selected");
             return;
         }
 
         try
         {
-            var collectionToDelete = _selectedCollection;
-            var success = await Client.DeleteCollectionAsync(collectionToDelete);
+            var projectToDelete = _selectedProject;
+            var success = await Client.DeleteProjectAsync(projectToDelete);
 
             if (success)
             {
-                SnackBarMessage($"Collection '{collectionToDelete}' removed successfully. The container and its files remain intact.");
-                _selectedCollection = "";
-                _selectedCollectionInfo = null;
-                _collectionFiles.Clear();
+                SnackBarMessage($"Project '{projectToDelete}' deleted successfully");
+                _selectedProject = "";
+                _selectedProjectInfo = null;
+                _projectFiles.Clear();
                 _fileUploads.Clear();
-                await LoadCollectionsAsync();
+                await LoadProjectsAsync();
             }
             else
             {
-                SnackBarError($"Failed to remove collection '{collectionToDelete}'");
+                SnackBarError($"Failed to delete project '{projectToDelete}'");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error removing collection {CollectionName}", _selectedCollection);
-            SnackBarError($"Error removing collection: {ex.Message}");
+            Logger.LogError(ex, "Error deleting project {ProjectName}", _selectedProject);
+            SnackBarError($"Error deleting project: {ex.Message}");
         }
     }
 
-    private async Task UpdateCollectionMetadataAsync()
+    private async Task UpdateProjectMetadataAsync()
     {
-        if (string.IsNullOrEmpty(_selectedCollection))
+        if (string.IsNullOrEmpty(_selectedProject))
         {
-            SnackBarError("No collection selected");
+            SnackBarError("No project selected");
             return;
         }
 
         try
         {
-            var success = await Client.UpdateCollectionMetadataAsync(
-                _selectedCollection,
-                string.IsNullOrWhiteSpace(_editCollectionDescription) ? null : _editCollectionDescription,
-                string.IsNullOrWhiteSpace(_editCollectionType) ? null : _editCollectionType);
+            var success = await Client.UpdateProjectMetadataAsync(
+                _selectedProject,
+                string.IsNullOrWhiteSpace(_editProjectDescription) ? null : _editProjectDescription,
+                string.IsNullOrWhiteSpace(_editProjectType) ? null : _editProjectType);
 
             if (success)
             {
-                SnackBarMessage($"Collection '{_selectedCollection}' metadata updated successfully");
+                SnackBarMessage($"Project '{_selectedProject}' metadata updated successfully");
                 _showEditMetadataForm = false;
                 
-                // Refresh the collection info
-                _selectedCollectionInfo = await Client.GetCollectionMetadataAsync(_selectedCollection);
+                // Refresh the project info
+                _selectedProjectInfo = await Client.GetProjectMetadataAsync(_selectedProject);
                 
-                // Update the collection in the list
-                var collectionInList = _collections.FirstOrDefault(c => c.Name == _selectedCollection);
-                if (collectionInList != null && _selectedCollectionInfo != null)
+                // Update the project in the list
+                var projectInList = _projects.FirstOrDefault(c => c.Name == _selectedProject);
+                if (projectInList != null && _selectedProjectInfo != null)
                 {
-                    collectionInList.Description = _selectedCollectionInfo.Description;
-                    collectionInList.Type = _selectedCollectionInfo.Type;
+                    projectInList.Description = _selectedProjectInfo.Description;
+                    projectInList.Type = _selectedProjectInfo.Type;
                 }
                 
                 StateHasChanged();
             }
             else
             {
-                SnackBarError($"Failed to update metadata for collection '{_selectedCollection}'");
+                SnackBarError($"Failed to update metadata for project '{_selectedProject}'");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error updating collection metadata for {CollectionName}", _selectedCollection);
-            SnackBarError($"Error updating collection metadata: {ex.Message}");
+            Logger.LogError(ex, "Error updating project metadata for {ProjectName}", _selectedProject);
+            SnackBarError($"Error updating project metadata: {ex.Message}");
         }
     }
 
     private bool OnFileFilter(ContainerFileInfo fileInfo) => 
         string.IsNullOrWhiteSpace(_filter) || fileInfo.FileName.Contains(_filter, StringComparison.OrdinalIgnoreCase);
 
+    private bool OnProjectFilter(CollectionInfo projectInfo)
+    {
+        if (string.IsNullOrWhiteSpace(_projectFilter))
+        {
+            _filteredProjectCount = _projects.Count;
+            return true;
+        }
+
+        var filter = _projectFilter.ToLower();
+        
+        var matches = projectInfo.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                     (!string.IsNullOrWhiteSpace(projectInfo.Type) && 
+                      projectInfo.Type.Contains(filter, StringComparison.OrdinalIgnoreCase)) ||
+                     (!string.IsNullOrWhiteSpace(projectInfo.Description) && 
+                      projectInfo.Description.Contains(filter, StringComparison.OrdinalIgnoreCase));
+
+        if (matches)
+        {
+            _filteredProjectCount++;
+        }
+
+        return matches;
+    }
+
+    private async Task OnProjectSelectionChangedAsync(CollectionInfo? project)
+    {
+        if (project != null)
+        {
+            await SelectProjectAsync(project.Name);
+        }
+    }
+
     private async Task RefreshAsync()
     {
-        await LoadCollectionFilesAsync();
+        await LoadProjectFilesAsync();
     }
 
     private async Task SubmitFilesForUploadAsync()
@@ -338,9 +381,9 @@ public sealed partial class Collections : IDisposable
             return;
         }
 
-        if (string.IsNullOrEmpty(_selectedCollection))
+        if (string.IsNullOrEmpty(_selectedProject))
         {
-            SnackBarError("Please select a collection to upload to");
+            SnackBarError("Please select a project to upload to");
             return;
         }
 
@@ -349,17 +392,17 @@ public sealed partial class Collections : IDisposable
         try
         {
             var metadata = new Dictionary<string, string>();
-            var result = await Client.UploadFilesToCollectionAsync(
+            var result = await Client.UploadFilesToProjectAsync(
                 _fileUploads.ToArray(), 
                 MaxIndividualFileSize, 
-                _selectedCollection, 
+                _selectedProject, 
                 metadata);
 
             Logger.LogInformation("Upload result: {Result}", result);
 
             if (result.IsSuccessful)
             {
-                SnackBarMessage($"Uploaded {result.UploadedFiles.Length} document(s) to '{_selectedCollection}'");
+                SnackBarMessage($"Uploaded {result.UploadedFiles.Length} document(s) to '{_selectedProject}'");
                 _fileUploads.Clear();
                 _showUploadSection = false; // Hide upload section after successful upload
             }
@@ -370,7 +413,7 @@ public sealed partial class Collections : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error uploading files to collection {Collection}", _selectedCollection);
+            Logger.LogError(ex, "Error uploading files to project {Project}", _selectedProject);
             SnackBarError($"Error uploading files: {ex.Message}");
         }
         finally
@@ -395,24 +438,10 @@ public sealed partial class Collections : IDisposable
     }
 
     private IList<IBrowserFile> _fileUploads = new List<IBrowserFile>();
-    
-    private void UploadFiles(IReadOnlyList<IBrowserFile> files)
-    {
-        foreach (var file in files)
-        {
-            _fileUploads.Add(file);
-        }
-    }
-
-    private void RemoveFile(IBrowserFile file)
-    {
-        _fileUploads.Remove(file);
-        StateHasChanged();
-    }
 
     private async Task ProcessDocumentLayoutAsync(string fileName)
     {
-        if (string.IsNullOrEmpty(_selectedCollection) || string.IsNullOrEmpty(fileName))
+        if (string.IsNullOrEmpty(_selectedProject) || string.IsNullOrEmpty(fileName))
             return;
 
         // Add to processing set
@@ -421,9 +450,9 @@ public sealed partial class Collections : IDisposable
 
         try
         {
-            Logger.LogInformation("Processing document layout for {FileName} in {Collection}", fileName, _selectedCollection);
+            Logger.LogInformation("Processing document layout for {FileName} in {Project}", fileName, _selectedProject);
             
-            var success = await Client.ProcessDocumentLayoutAsync(_selectedCollection, fileName);
+            var success = await Client.ProcessProjectDocumentLayoutAsync(_selectedProject, fileName);
             
             if (success)
             {
@@ -449,13 +478,12 @@ public sealed partial class Collections : IDisposable
 
     private async Task ViewFileAsync(string fileName, bool isProcessingFile = false)
     {
-        if (string.IsNullOrEmpty(_selectedCollection) || string.IsNullOrEmpty(fileName))
+        if (string.IsNullOrEmpty(_selectedProject) || string.IsNullOrEmpty(fileName))
             return;
 
         try
         {
-            var containerName = isProcessingFile ? $"{_selectedCollection}-extract" : _selectedCollection;
-            var fileUrl = await Client.GetFileUrlAsync(containerName, fileName);
+            var fileUrl = await Client.GetProjectFileUrlAsync(_selectedProject, fileName, isProcessingFile);
             
             if (!string.IsNullOrEmpty(fileUrl))
             {
@@ -516,7 +544,7 @@ public sealed partial class Collections : IDisposable
 
     private async Task DeleteFileAsync(string fileName)
     {
-        if (string.IsNullOrEmpty(_selectedCollection) || string.IsNullOrEmpty(fileName))
+        if (string.IsNullOrEmpty(_selectedProject) || string.IsNullOrEmpty(fileName))
             return;
 
         // Show confirmation dialog
@@ -539,9 +567,9 @@ public sealed partial class Collections : IDisposable
 
         try
         {
-            Logger.LogInformation("Deleting file {FileName} from {Collection}", fileName, _selectedCollection);
+            Logger.LogInformation("Deleting file {FileName} from {Project}", fileName, _selectedProject);
             
-            var success = await Client.DeleteFileFromCollectionAsync(_selectedCollection, fileName);
+            var success = await Client.DeleteFileFromProjectAsync(_selectedProject, fileName);
             
             if (success)
             {
