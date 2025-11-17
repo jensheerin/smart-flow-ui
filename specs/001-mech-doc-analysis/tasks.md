@@ -73,18 +73,18 @@
 
 > **CRITICAL: Write these tests FIRST, run them, ensure they FAIL before implementation begins**
 
-- [ ] T025 [P] [US1] Unit tests for AnalysisSession model validation in `app/SmartFlow.UI.API.Tests/Models/AnalysisSessionTests.cs`
-- [ ] T026 [P] [US1] Unit tests for UploadedDocument model validation in `app/SmartFlow.UI.API.Tests/Models/UploadedDocumentTests.cs`
-- [ ] T027 [P] [US1] Unit tests for DocumentAnalysisService in `app/SmartFlow.UI.API.Tests/Services/DocumentAnalysisServiceTests.cs`
-- [ ] T028 [P] [US1] Unit tests for AnalysisSessionService in `app/SmartFlow.UI.API.Tests/Services/AnalysisSessionServiceTests.cs`
-- [ ] T029 [P] [US1] Integration test for DocumentAnalysisController POST /api/analysis/upload in `app/SmartFlow.UI.API.Tests/Integration/DocumentAnalysisEndpointsTests.cs`
-- [ ] T030 [P] [US1] Integration test for DocumentAnalysisController GET /api/analysis/{sessionId} in `app/SmartFlow.UI.API.Tests/Integration/DocumentAnalysisEndpointsTests.cs`
-- [ ] T031 [P] [US1] Integration test for DocumentAnalysisController GET /api/analysis/{sessionId}/status in `app/SmartFlow.UI.API.Tests/Integration/DocumentAnalysisEndpointsTests.cs`
-- [ ] T032 [P] [US1] Component test for DocumentUpload.razor with file selection in `app/SmartFlow.UI.Client.Tests/Components/DocumentUploadTests.cs`
-- [ ] T033 [P] [US1] Component test for DocumentUpload.razor with drag-drop in `app/SmartFlow.UI.Client.Tests/Components/DocumentUploadTests.cs`
-- [ ] T034 [P] [US1] Component test for AnalysisResults.razor with mock data in `app/SmartFlow.UI.Client.Tests/Components/AnalysisResultsTests.cs`
-- [ ] T035 [P] [US1] Component test for ExtractedScheduleTable.razor in `app/SmartFlow.UI.Client.Tests/Components/ExtractedScheduleTableTests.cs`
-- [ ] T036 [US1] Verify all tests FAIL (no implementation exists yet) - commit failing tests
+- [X] T025 [P] [US1] Unit tests for AnalysisSession model validation in `app/SmartFlow.UI.API.Tests/Models/AnalysisSessionTests.cs`
+- [X] T026 [P] [US1] Unit tests for UploadedDocument model validation in `app/SmartFlow.UI.API.Tests/Models/UploadedDocumentTests.cs`
+- [X] T027 [P] [US1] Unit tests for DocumentAnalysisService in `app/SmartFlow.UI.API.Tests/Services/DocumentAnalysisServiceTests.cs`
+- [X] T028 [P] [US1] Unit tests for AnalysisSessionService in `app/SmartFlow.UI.API.Tests/Services/AnalysisSessionServiceTests.cs`
+- [X] T029 [P] [US1] Integration test for DocumentAnalysisController POST /api/analysis/upload in `app/SmartFlow.UI.API.Tests/Integration/DocumentAnalysisEndpointsTests.cs`
+- [X] T030 [P] [US1] Integration test for DocumentAnalysisController GET /api/analysis/{sessionId} in `app/SmartFlow.UI.API.Tests/Integration/DocumentAnalysisEndpointsTests.cs`
+- [X] T031 [P] [US1] Integration test for DocumentAnalysisController GET /api/analysis/{sessionId}/status in `app/SmartFlow.UI.API.Tests/Integration/DocumentAnalysisEndpointsTests.cs`
+- [X] T032 [P] [US1] Component test for DocumentUpload.razor with file selection in `app/SmartFlow.UI.Client.Tests/Components/DocumentUploadTests.cs`
+- [X] T033 [P] [US1] Component test for DocumentUpload.razor with drag-drop in `app/SmartFlow.UI.Client.Tests/Components/DocumentUploadTests.cs`
+- [X] T034 [P] [US1] Component test for AnalysisResults.razor with mock data in `app/SmartFlow.UI.Client.Tests/Components/AnalysisResultsTests.cs`
+- [X] T035 [P] [US1] Component test for ExtractedScheduleTable.razor in `app/SmartFlow.UI.Client.Tests/Components/ExtractedScheduleTableTests.cs`
+- [X] T036 [US1] Verify all tests FAIL (no implementation exists yet) - commit failing tests
 
 ### Implementation for User Story 1 🟢 GREEN
 
