@@ -84,6 +84,10 @@ else
 builder.Services.AddCustomHealthChecks();
 
 var app = builder.Build();
+
+// Add global exception handler middleware early in the pipeline (T024a)
+app.UseMiddleware<MinimalApi.Middleware.GlobalExceptionHandler>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

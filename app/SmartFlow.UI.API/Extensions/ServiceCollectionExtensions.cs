@@ -166,7 +166,7 @@ internal static class ServiceCollectionExtensions
             services.AddSingleton<AzureAIAgentManagementService>();
             services.AddSingleton<AzureAIAgentChatService>();
         }
-        
+
         services.AddSingleton<ProjectService>();
         services.AddSingleton<ImageGenerationChatAgent>();
         services.AddSingleton<TextToImageService>();
@@ -182,6 +182,21 @@ internal static class ServiceCollectionExtensions
         {
             client.Timeout = TimeSpan.FromMinutes(5);
         });
+
+        // Register Document Agent HTTP client for mechanical document analysis (T021)
+        if (!string.IsNullOrEmpty(configuration.DocumentAgentApiUrl))
+        {
+            services.AddHttpClient("DocumentAgentClient", client =>
+            {
+                client.BaseAddress = new Uri(configuration.DocumentAgentApiUrl);
+                if (!string.IsNullOrEmpty(configuration.DocumentAgentApiKey))
+                {
+                    client.DefaultRequestHeaders.Add("x-api-key", configuration.DocumentAgentApiKey);
+                }
+                client.Timeout = TimeSpan.FromMinutes(5); // Long timeout for document processing operations
+            })
+            .AddStandardResilienceHandler(); // Standard retry, circuit breaker, and timeout policies
+        }
     }
 
     private static void SetupOpenAIClientsUsingOnBehalfOfOthersFlowAndSubscriptionKey(IServiceProvider sp, IHttpContextAccessor httpContextAccessor, AppConfiguration config, string? standardServiceEndpoint, out AzureOpenAIClient? openAIClient3, out AzureOpenAIClient? openAIClient4)
@@ -234,7 +249,8 @@ internal static class ServiceCollectionExtensions
     {
         services.AddHealthChecks()
             .AddCheck<CosmosDbReadinessHealthCheck>("CosmosDB Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"])
-            .AddCheck<AzureStorageReadinessHealthCheck>("Azure Storage Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"]);
+            .AddCheck<AzureStorageReadinessHealthCheck>("Azure Storage Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"])
+            .AddCheck<DocumentAgentHealthCheck>("Document Agent Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"]);
             //TODO: this is commented out until a refactor of the profiles is done. The Search Index must exist in order to check its readiness.
             //.AddCheck<AzureSearchReadinessHealthCheck>("Azure Search Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"]);
 

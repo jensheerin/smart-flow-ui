@@ -84,4 +84,8 @@ public class AppConfiguration
     public string? ProfileConfigurationBlobStorageContainer { get; init; }
     public string? ProfileConfiguration { get; init; }
     public string ProfileFileName { get; init; } = "profiles";
+
+    // Document Agent configuration
+    public string? DocumentAgentApiUrl { get; init; }
+    public string? DocumentAgentApiKey { get; init; }
 }

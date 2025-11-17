@@ -9,4 +9,11 @@ public static class DefaultSettings
     public static string CosmosDbDatabaseName = "ChatHistory";
     public static string CosmosDbCollectionName = "ChatTurn";
     public static string CosmosDBUserDocumentsCollectionName = "UserDocuments";
+
+    // Mechanical Document Analysis collections
+    public static string CosmosDBAnalysisSessionsCollectionName = "AnalysisSessions";
+    public static string CosmosDBChatMessagesCollectionName = "ChatMessages";
+
+    // Mechanical Document Analysis blob storage
+    public static string MechDocAnalysisBlobContainer = "mech-doc-analysis";
 }

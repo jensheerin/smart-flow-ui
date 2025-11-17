@@ -22,6 +22,11 @@
         <MudNavLink Href="collections" aria-label="View user documents." Icon="@Icons.Material.Filled.FileUpload">Collections</MudNavLink>
     } *@
 
+    @if (IsPathEnabled("document-analysis"))
+    {
+        <MudNavLink Href="document-analysis" aria-label="Mechanical document analysis for sales engineers." Icon="@Icons.Material.Filled.Description">Document Analysis</MudNavLink>
+    }
+
     @if (IsPathEnabled("history"))
     {
         <MudNavLink Href="v2/history" aria-label="View chat history." Icon="@Icons.Material.Filled.List">History</MudNavLink>

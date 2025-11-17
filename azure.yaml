@@ -1,7 +1,7 @@
 # ----------------------------------------------------------------------------------------------------
 # Pipeline for AZD process
 # ----------------------------------------------------------------------------------------------------
-name: AI-Document-Review
+name: smartflow-ui
 
 metadata:
   template: azd-init@1.11.0
@@ -13,21 +13,12 @@ infra:
 
 services:
   api:
-    project: ./app/Assistant.Hub.Api
-    host: containerapp
-    language: dotnet
-    # resourceName: api-gateway
-    docker:
-      path: ./Dockerfile
-      context: .
-
-  batch:
-    project: ./app/Assistant.Hub.Api.Batch
+    project: ./app/SmartFlow.UI.API
     host: containerapp
     language: dotnet
     docker:
-      path: ./Dockerfile
-      context: .
+      path: ./app/Dockerfile
+      context: ./app
 
 hooks:
   # This script gets my IP address
@@ -61,29 +52,19 @@ hooks:
         AOAIPremiumChatGptDeployment = "gpt-4o"
         AOAIStandardServiceEndpoint = $envDict['AI_ENDPOINT']
         AOAIStandardChatGptDeployment = "gpt-4o"
-        AzureDocumentIntelligenceEndpoint = $envDict['DOCUMENT_INTELLIGENCE_ENDPOINT']
-        AzureAISearchEndpoint = $envDict['AI_SEARCH_ENDPOINT']
-        StorageAccountName = $envDict['STORAGE_ACCOUNT_NAME']
-        ContentStorageContainer = $envDict['STORAGE_ACCOUNT_CONTAINER']
-        ApiKey = $envDict['API_KEY']
+        AOAIEmbeddingsDeployment = "text-embedding"
+        AzureSearchServiceEndpoint = $envDict['AI_SEARCH_ENDPOINT']
         CosmosDbEndpoint = $envDict['COSMOS_ENDPOINT']
-        Values = @{
-            AnalysisApiKey = $envDict['API_KEY']
-            AnalysisApiEndpoint = "https://$($envDict['API_CONTAINER_APP_FQDN'])"
-            AzureWebJobsStorage = 'UseDevelopmentStorage=true'
-            FUNCTIONS_WORKER_RUNTIME = 'dotnet-isolated'
-            BatchAnalysisStorageAccountName = $envDict['STORAGE_ACCOUNT_NAME']
-            BatchAnalysisStorageInputContainerName = $envDict['STORAGE_ACCOUNT_BATCH_IN_CONTAINER']
-            BatchAnalysisStorageOutputContainerName = $envDict['STORAGE_ACCOUNT_BATCH_OUT_CONTAINER']
-            CosmosDbEndpoint = $envDict['COSMOS_ENDPOINT']
-            CosmosDbDatabaseName = $envDict['COSMOS_DATABASE_NAME']
-            CosmosDbContainerName = $envDict['COSMOS_CONTAINER_NAME']
-            MaxBatchSize = 10
-        }
-        IsEncrypted = $false
+        CosmosDbDatabaseName = "ChatHistory"
+        CosmosDbCollectionName = "ChatTurn"
+        AzureStorageAccountEndpoint = $envDict['STORAGE_ACCOUNT_ENDPOINT']
+        AzureStorageUserUploadContainer = "content"
+        UseManagedIdentityResourceAccess = $true
+        ProfileFileName = "profiles"
+        ShowCollectionsSelection = "True"
+        ShowFileUploadSelection = "True"
       } | ConvertTo-Json -Depth 5
 
-      $json_content | Set-Content ./app/Assistant.Hub.Api/appsettings.Development.json
-      $json_content | Set-Content ./app/Assistant.Hub.Api.Batch/local.settings.json
+      $json_content | Set-Content ./app/SmartFlow.UI.API/appsettings.Development.json
     continueOnError: false
     interactive: false
