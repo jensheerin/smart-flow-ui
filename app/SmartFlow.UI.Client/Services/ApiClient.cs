@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using SmartFlow.UI.Client.Utilities;
+
 namespace SmartFlow.UI.Client.Services;
 
 public sealed class ApiClient(HttpClient httpClient)
@@ -205,14 +207,17 @@ public sealed class ApiClient(HttpClient httpClient)
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
 
+                // Sanitize the file name to replace spaces and problematic characters
+                var sanitizedFileName = FileNameSanitizer.Sanitize(file.Name);
+                
                 // Prepend folder path to filename if specified
-                var fullPath = folderPrefix + file.Name;
+                var fullPath = folderPrefix + sanitizedFileName;
                 filePathMap[file.Name] = fullPath;
 
-                Console.WriteLine($"[CLIENT DEBUG] Creating path map: '{file.Name}' -> '{fullPath}'");
+                Console.WriteLine($"[CLIENT DEBUG] Creating path map: '{file.Name}' -> '{fullPath}' (sanitized from '{file.Name}')");
 
                 // Note: ASP.NET Core will strip path from filename for security, but we'll send full path in metadata
-                content.Add(fileContent, "files", file.Name);
+                content.Add(fileContent, "files", sanitizedFileName);
             }
 
             var tokenResponse = await httpClient.GetAsync("api/token/csrf");
@@ -225,7 +230,10 @@ public sealed class ApiClient(HttpClient httpClient)
 
             if (metadata != null)
             {
+                // Serialize the dictionary to a JSON string
                 string serializedHeaders = System.Text.Json.JsonSerializer.Serialize(metadata);
+
+                // Add the serialized dictionary as a single header value
                 content.Headers.Add("X-FILE-METADATA", serializedHeaders);
             }
 
@@ -439,13 +447,16 @@ public sealed class ApiClient(HttpClient httpClient)
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
 
+                // Sanitize the file name to replace spaces and problematic characters
+                var sanitizedFileName = FileNameSanitizer.Sanitize(file.Name);
+                
                 // Prepend folder path to filename if specified
-                var fullPath = folderPrefix + file.Name;
+                var fullPath = folderPrefix + sanitizedFileName;
                 filePathMap[file.Name] = fullPath;
 
-                Console.WriteLine($"[CLIENT DEBUG] Creating path map for project: '{file.Name}' -> '{fullPath}'");
+                Console.WriteLine($"[CLIENT DEBUG] Creating path map for project: '{file.Name}' -> '{fullPath}' (sanitized)");
 
-                content.Add(fileContent, file.Name, file.Name);
+                content.Add(fileContent, sanitizedFileName, sanitizedFileName);
             }
 
             var tokenResponse = await httpClient.GetAsync("api/token/csrf");
@@ -522,6 +533,102 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             Debug.WriteLine($"Error analyzing project plan: {ex.Message}");
             return false;
+        }
+    }
+
+    public async Task<bool> AnalyzeProjectCdeAsync(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze-cde", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error analyzing project CDE: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<EquipmentMapResult?> GetProjectEquipmentMapAsync(string projectName)
+    {
+        try
+        {
+            // The processing files are stored with the project name prefix
+            // e.g., "projectname/equipment_map.json"
+            var fullFilePath = $"{projectName}/equipment_map.json";
+            
+            var fileUrl = await GetProjectFileUrlAsync(projectName, fullFilePath, isProcessingFile: true);
+            if (string.IsNullOrEmpty(fileUrl))
+            {
+                Debug.WriteLine($"GetProjectEquipmentMapAsync: fileUrl is null or empty for project {projectName}");
+                return null;
+            }
+
+            Debug.WriteLine($"GetProjectEquipmentMapAsync: Fetching from URL {fileUrl}");
+            var response = await httpClient.GetAsync(fileUrl);
+            
+            Debug.WriteLine($"GetProjectEquipmentMapAsync: Response status {response.StatusCode}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"GetProjectEquipmentMapAsync: Content length {content.Length}");
+                
+                var result = System.Text.Json.JsonSerializer.Deserialize<EquipmentMapResult>(content, new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                
+                Debug.WriteLine($"GetProjectEquipmentMapAsync: Deserialized result, equipment types count: {result?.EquipmentTypes?.Count ?? 0}");
+                return result;
+            }
+            else
+            {
+                Debug.WriteLine($"GetProjectEquipmentMapAsync: Failed to fetch, status: {response.StatusCode}");
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching equipment map: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<string?> GetProjectReaderAgentResponseAsync(string projectName)
+    {
+        try
+        {
+            // The processing files are stored with the project name prefix
+            var fullFilePath = $"{projectName}/reader-agent-response.md";
+            
+            var fileUrl = await GetProjectFileUrlAsync(projectName, fullFilePath, isProcessingFile: true);
+            if (string.IsNullOrEmpty(fileUrl))
+            {
+                Debug.WriteLine($"GetProjectReaderAgentResponseAsync: fileUrl is null or empty for project {projectName}");
+                return null;
+            }
+
+            Debug.WriteLine($"GetProjectReaderAgentResponseAsync: Fetching from URL {fileUrl}");
+            var response = await httpClient.GetAsync(fileUrl);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"GetProjectReaderAgentResponseAsync: Content length {content.Length}");
+                return content;
+            }
+            else
+            {
+                Debug.WriteLine($"GetProjectReaderAgentResponseAsync: Failed to fetch, status: {response.StatusCode}");
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching reader agent response: {ex.Message}");
+            return null;
         }
     }
 
@@ -673,7 +780,10 @@ public sealed class ApiClient(HttpClient httpClient)
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
 
-                content.Add(fileContent, file.Name, file.Name);
+                // Sanitize the file name to replace spaces and problematic characters
+                var sanitizedFileName = FileNameSanitizer.Sanitize(file.Name);
+                
+                content.Add(fileContent, sanitizedFileName, sanitizedFileName);
             }
 
             var tokenResponse = await httpClient.GetAsync("api/token/csrf");
@@ -1063,6 +1173,77 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             Debug.WriteLine($"Error deleting collection indexing workflow: {ex.Message}");
             return false;
+        }
+    }
+
+    // Agent-Hub Push Indexing APIs
+    /// <summary>
+    /// Triggers push-based RAG indexing for a collection via Agent-Hub-JCI.
+    /// This approach uses APIM and works with private endpoints.
+    /// </summary>
+    /// <param name="containerName">Name of the container to index</param>
+    /// <param name="recreateIndex">Whether to recreate the index from scratch</param>
+    /// <returns>Response with correlation ID for tracking, or null on error</returns>
+    public async Task<PushIndexingResponse?> TriggerPushIndexingAsync(string containerName, bool recreateIndex = false)
+    {
+        try
+        {
+            var request = new PushIndexingRequest
+            {
+                ContainerName = containerName,
+                RecreateIndex = recreateIndex
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync("api/search/process", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<PushIndexingResponse>();
+            }
+
+            Debug.WriteLine($"Push indexing trigger failed: {response.StatusCode}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error triggering push indexing: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the status of a push indexing job.
+    /// </summary>
+    /// <param name="correlationId">Correlation ID from the initial trigger response</param>
+    /// <returns>Current status of the indexing job, or null on error</returns>
+    public async Task<PushIndexingStatusResponse?> GetPushIndexingStatusAsync(string correlationId)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/search/status/{correlationId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"Push indexing status response: {content}");
+                
+                var result = System.Text.Json.JsonSerializer.Deserialize<PushIndexingStatusResponse>(
+                    content,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                
+                Debug.WriteLine($"Deserialized status: {result?.Status}, Progress: {result?.ProgressCount}/{result?.TotalCount}");
+                return result;
+            }
+
+            Debug.WriteLine($"Get push indexing status failed: {response.StatusCode}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error getting push indexing status: {ex.Message}");
+            return null;
         }
     }
 }
